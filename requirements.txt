@@ -1,0 +1,9 @@
+runpod
+torch
+torchvision
+torchaudio
+diffusers
+transformers
+accelerate
+sentencepiece
+moviepy

@@ -1,0 +1,13 @@
+input:
+  properties:
+    image:
+      type: string
+      description: Base64 encoded input image
+    seconds:
+      type: integer
+      default: 2
+    fps:
+      type: integer
+      default: 24
+  required:
+    - image
