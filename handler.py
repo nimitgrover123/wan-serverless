@@ -4,7 +4,19 @@ from diffusers import DiffusionPipeline
 import base64
 import os
 import tempfile
+from huggingface_hub import hf_hub_download
+import os
 
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+model_path = hf_hub_download(
+    repo_id="Wan-AI/Wan2.2-Image2Video-14B",
+    filename="model.safetensors",
+    cache_dir="/cache",
+    token=HF_TOKEN
+)
+
+print("Loaded WAN model at:", model_path)
 MODEL_ID = "DiffusionCraft/wan-2.2-image2video-14b-lite"
 
 pipe = None
