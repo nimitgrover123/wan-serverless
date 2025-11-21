@@ -1,66 +1,100 @@
 import runpod
+import os
 import torch
-from diffusers import DiffusionPipeline
-import base64
-import os
-import tempfile
 from huggingface_hub import hf_hub_download
-import os
+from pathlib import Path
+
+# -----------------------------------------------------
+# 1. Load WAN model (download if missing)
+# -----------------------------------------------------
 
 HF_TOKEN = os.getenv("HF_TOKEN")
+MODEL_REPO = "Wan-AI/Wan2.2-Image2Video-14B"
+MODEL_FILE = "model.safetensors"
+CACHE_DIR = "/cache"
 
-model_path = hf_hub_download(
-    repo_id="Wan-AI/Wan2.2-Image2Video-14B",
-    filename="model.safetensors",
-    cache_dir="/cache",
-    token=HF_TOKEN
-)
+WAN_MODEL_PATH = None
+WAN_MODEL = None
 
-print("Loaded WAN model at:", model_path)
-MODEL_ID = "DiffusionCraft/wan-2.2-image2video-14b-lite"
-
-pipe = None
 
 def load_model():
-    global pipe
-    if pipe is None:
-        pipe = DiffusionPipeline.from_pretrained(
-            MODEL_ID,
-            torch_dtype=torch.float16,
-            variant="fp16"
-        ).to("cuda")
-    return pipe
+    global WAN_MODEL_PATH, WAN_MODEL
 
-def run(job):
-    req = job["input"]
+    if WAN_MODEL is not None:
+        return WAN_MODEL
 
-    image_b64 = req["image"]
-    seconds = req.get("seconds", 2)
-    fps = req.get("fps", 24)
+    print("🔍 Checking WAN model in cache...")
 
-    image_bytes = base64.b64decode(image_b64)
+    WAN_MODEL_PATH = hf_hub_download(
+        repo_id=MODEL_REPO,
+        filename=MODEL_FILE,
+        cache_dir=CACHE_DIR,
+        token=HF_TOKEN
+    )
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as f:
-        f.write(image_bytes)
-        input_image_path = f.name
+    print("📦 WAN model located at:", WAN_MODEL_PATH)
 
-    pipe = load_model()
+    # --------------------------------------------------
+    # LOAD MODEL + OPTIMIZE
+    # --------------------------------------------------
+    print("⚙️ Loading model into GPU...")
+    model = torch.load(WAN_MODEL_PATH, map_location="cuda")
+    model.eval()
 
-    video = pipe(
-        image=input_image_path,
-        num_frames=seconds * fps,
-    ).frames
+    WAN_MODEL = model
+    print("🚀 Model ready!")
 
-    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    video.write_videofile(output_path, fps=fps)
+    return WAN_MODEL
 
-    with open(output_path, "rb") as f:
-        video_b64 = base64.b64encode(f.read()).decode("utf-8")
+
+# -----------------------------------------------------
+# 2. Inference Function
+# -----------------------------------------------------
+
+def generate_video(prompt: str, num_frames: int = 48):
+    model = load_model()
+
+    # NOTE:
+    # WAN2.x inference code may differ depending on the repo.
+    # Replace below logic with the official forward() call.
+
+    with torch.no_grad():
+        output = model.generate_video(
+            prompt=prompt,
+            num_frames=num_frames,
+            guidance_scale=7.5,
+            seed=42
+        )
+
+    video_path = "/tmp/output.mp4"
+    output.save(video_path)
+
+    return video_path
+
+
+# -----------------------------------------------------
+# 3. Runpod Handler Function
+# -----------------------------------------------------
+
+def handler(job):
+    """Runpod job handler."""
+    inp = job["input"]
+
+    prompt = inp.get("prompt", "A cinematic waterfall flowing through neon rocks")
+    num_frames = int(inp.get("num_frames", 48))
+
+    print(f"🧪 Generating: {prompt} ({num_frames} frames)")
+
+    output_video = generate_video(prompt, num_frames)
 
     return {
-        "video_base64": video_b64,
-        "seconds": seconds,
-        "fps": fps
+        "video_url": runpod.serverless.upload_file(output_video),
+        "status": "success"
     }
 
-runpod.serverless.start({"handler": run})
+
+# -----------------------------------------------------
+# 4. Start Runpod Serverless
+# -----------------------------------------------------
+
+runpod.serverless.start({"handler": handler})
