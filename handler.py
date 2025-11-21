@@ -2,99 +2,65 @@ import runpod
 import os
 import torch
 from huggingface_hub import hf_hub_download
-from pathlib import Path
-
-# -----------------------------------------------------
-# 1. Load WAN model (download if missing)
-# -----------------------------------------------------
+from diffusers import DiffusionPipeline
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_REPO = "Wan-AI/Wan2.2-Image2Video-14B"
-MODEL_FILE = "model.safetensors"
 CACHE_DIR = "/cache"
 
-WAN_MODEL_PATH = None
-WAN_MODEL = None
+pipe = None
 
 
 def load_model():
-    global WAN_MODEL_PATH, WAN_MODEL
+    global pipe
+    if pipe:
+        return pipe
 
-    if WAN_MODEL is not None:
-        return WAN_MODEL
+    print("⬇️ Downloading WAN 2.2 Model...")
 
-    print("🔍 Checking WAN model in cache...")
-
-    WAN_MODEL_PATH = hf_hub_download(
-        repo_id=MODEL_REPO,
-        filename=MODEL_FILE,
+    pipe = DiffusionPipeline.from_pretrained(
+        MODEL_REPO,
         cache_dir=CACHE_DIR,
-        token=HF_TOKEN
-    )
+        token=HF_TOKEN,
+        torch_dtype=torch.float16
+    ).to("cuda")
 
-    print("📦 WAN model located at:", WAN_MODEL_PATH)
+    print("🚀 WAN 2.2 Loaded!")
+    return pipe
 
-    # --------------------------------------------------
-    # LOAD MODEL + OPTIMIZE
-    # --------------------------------------------------
-    print("⚙️ Loading model into GPU...")
-    model = torch.load(WAN_MODEL_PATH, map_location="cuda")
-    model.eval()
-
-    WAN_MODEL = model
-    print("🚀 Model ready!")
-
-    return WAN_MODEL
-
-
-# -----------------------------------------------------
-# 2. Inference Function
-# -----------------------------------------------------
 
 def generate_video(prompt: str, num_frames: int = 48):
-    model = load_model()
+    pipe = load_model()
 
-    # NOTE:
-    # WAN2.x inference code may differ depending on the repo.
-    # Replace below logic with the official forward() call.
+    print("🎬 Generating video...")
 
-    with torch.no_grad():
-        output = model.generate_video(
-            prompt=prompt,
-            num_frames=num_frames,
-            guidance_scale=7.5,
-            seed=42
-        )
+    output = pipe(
+        prompt=prompt,
+        num_frames=num_frames,
+        guidance_scale=7.5
+    )
 
-    video_path = "/tmp/output.mp4"
-    output.save(video_path)
+    video = output.videos[0]
 
-    return video_path
+    out_path = "/tmp/output.mp4"
+    video.save(out_path)
 
+    return out_path
 
-# -----------------------------------------------------
-# 3. Runpod Handler Function
-# -----------------------------------------------------
 
 def handler(job):
-    """Runpod job handler."""
     inp = job["input"]
-
-    prompt = inp.get("prompt", "A cinematic waterfall flowing through neon rocks")
+    prompt = inp.get("prompt", "A neon waterfall in a glowing forest")
     num_frames = int(inp.get("num_frames", 48))
 
-    print(f"🧪 Generating: {prompt} ({num_frames} frames)")
+    print(f"⚡ Job received: {prompt}")
 
-    output_video = generate_video(prompt, num_frames)
+    video_path = generate_video(prompt, num_frames)
 
     return {
-        "video_url": runpod.serverless.upload_file(output_video),
-        "status": "success"
+        "status": "success",
+        "video_url": runpod.serverless.upload_file(video_path)
     }
 
-
-# -----------------------------------------------------
-# 4. Start Runpod Serverless
-# -----------------------------------------------------
 
 runpod.serverless.start({"handler": handler})
