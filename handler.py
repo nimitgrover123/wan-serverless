@@ -1,65 +1,87 @@
-import runpod
 import os
+import runpod
 import torch
-from huggingface_hub import hf_hub_download
-from diffusers import DiffusionPipeline
+from pathlib import Path
+import imageio
 
-HF_TOKEN = os.getenv("HF_TOKEN")
-MODEL_REPO = "Wan-AI/Wan2.2-Image2Video-14B"
-CACHE_DIR = "/cache"
+# ---------------------------------------------------------
+# WAN 2.2 LOCAL MODEL SETUP
+# ---------------------------------------------------------
 
-pipe = None
+MODEL_PATH = "/workspace/models/wan2.2_i2v_14b.safetensors"
+WAN_MODEL = None
 
+
+# Dummy WAN loader — replace with official code
+class WAN22_I2V:
+    def __init__(self, ckpt):
+        print("Loading WAN 2.2 I2V model...")
+        self.model = torch.load(ckpt, map_location="cuda")
+        self.model.eval()
+        print("WAN ready.")
+
+    @torch.no_grad()
+    def infer(self, prompt, num_frames=48):
+        # Replace with official WAN inference call
+        print(f"Running WAN inference for: {prompt}")
+
+        # Fake output frames for structure (replace)
+        frames = [(255 * torch.rand(256, 256, 3)).byte().cpu().numpy()
+                  for _ in range(num_frames)]
+        return frames
+
+
+# ---------------------------------------------------------
+# Load model once per container
+# ---------------------------------------------------------
 
 def load_model():
-    global pipe
-    if pipe:
-        return pipe
+    global WAN_MODEL
 
-    print("⬇️ Downloading WAN 2.2 Model...")
+    if WAN_MODEL is not None:
+        return WAN_MODEL
 
-    pipe = DiffusionPipeline.from_pretrained(
-        MODEL_REPO,
-        cache_dir=CACHE_DIR,
-        token=HF_TOKEN,
-        torch_dtype=torch.float16
-    ).to("cuda")
+    if not Path(MODEL_PATH).exists():
+        raise FileNotFoundError(f"Model file missing: {MODEL_PATH}")
 
-    print("🚀 WAN 2.2 Loaded!")
-    return pipe
+    WAN_MODEL = WAN22_I2V(MODEL_PATH)
+    return WAN_MODEL
 
 
-def generate_video(prompt: str, num_frames: int = 48):
-    pipe = load_model()
+# ---------------------------------------------------------
+# Inference
+# ---------------------------------------------------------
 
-    print("🎬 Generating video...")
+def generate_video(prompt, num_frames):
+    model = load_model()
 
-    output = pipe(
-        prompt=prompt,
-        num_frames=num_frames,
-        guidance_scale=7.5
-    )
+    frames = model.infer(prompt, num_frames)
 
-    video = output.videos[0]
+    output_path = "/tmp/output.mp4"
+    imageio.mimsave(output_path, frames, fps=24)
 
-    out_path = "/tmp/output.mp4"
-    video.save(out_path)
+    return output_path
 
-    return out_path
 
+# ---------------------------------------------------------
+# RunPod handler
+# ---------------------------------------------------------
 
 def handler(job):
-    inp = job["input"]
-    prompt = inp.get("prompt", "A neon waterfall in a glowing forest")
+    inp = job.get("input", {})
+
+    prompt = inp.get("prompt", "A cinematic neon waterfall")
     num_frames = int(inp.get("num_frames", 48))
 
-    print(f"⚡ Job received: {prompt}")
+    print(f"Generating video: {prompt} ({num_frames} frames)")
 
     video_path = generate_video(prompt, num_frames)
 
+    url = runpod.serverless.upload_file(video_path)
+
     return {
         "status": "success",
-        "video_url": runpod.serverless.upload_file(video_path)
+        "video_url": url
     }
 
 
