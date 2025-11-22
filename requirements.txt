@@ -16,4 +16,4 @@ safetensors
 torch==2.3.0
 torchvision==0.18.0
 
-git+https://github.com/WAN-open/wan2.2.git
+git+https://github.com/Wan-Video/Wan2.2.git
