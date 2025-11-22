@@ -7,3 +7,9 @@ transformers
 accelerate
 sentencepiece
 moviepy
+tqdm
+numpy
+imageio[ffmpeg]
+opencv-python
+einops
+safetensors
