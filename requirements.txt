@@ -1,7 +1,7 @@
 runpod
-torch
-torchvision
-torchaudio
+torch==2.3.0
+torchvision==0.18.0
+torchaudio==2.3.0
 diffusers
 transformers
 accelerate
@@ -13,7 +13,5 @@ imageio[ffmpeg]
 opencv-python
 einops
 safetensors
-torch==2.3.0
-torchvision==0.18.0
 
 git+https://github.com/Wan-Video/Wan2.2.git
