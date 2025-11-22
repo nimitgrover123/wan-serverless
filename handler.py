@@ -8,7 +8,7 @@ import imageio
 # WAN 2.2 LOCAL MODEL SETUP
 # ---------------------------------------------------------
 
-MODEL_PATH = "/workspace/models/wan2.2_i2v_14b.safetensors
+MODEL_PATH = "/workspace/models/wan2.2_i2v_14b.safetensors"
 
 WAN_MODEL = None
 
