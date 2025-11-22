@@ -1,89 +1,64 @@
-import os
 import runpod
 import torch
-from pathlib import Path
-import imageio
+import os
+import base64
+import cv2
+from wan.pipeline import WANPipeline
 
-# ---------------------------------------------------------
-# WAN 2.2 LOCAL MODEL SETUP
-# ---------------------------------------------------------
+VOLUME_PATH = "/runpod-volume/wan22"   # your Runpod Volume mount
 
-MODEL_PATH = "/workspace/models/wan2.2_i2v_14b.safetensors"
+os.makedirs(VOLUME_PATH, exist_ok=True)
 
-WAN_MODEL = None
+print("🔄 Loading WAN 2.2 model from volume:", VOLUME_PATH)
 
+pipe = WANPipeline.from_pretrained(
+    VOLUME_PATH,
+    torch_dtype=torch.float16
+).to("cuda")
 
-# Dummy WAN loader — replace with official code
-class WAN22_I2V:
-    def __init__(self, ckpt):
-        print("Loading WAN 2.2 I2V model...")
-        self.model = torch.load(ckpt, map_location="cuda")
-        self.model.eval()
-        print("WAN ready.")
-
-    @torch.no_grad()
-    def infer(self, prompt, num_frames=48):
-        # Replace with official WAN inference call
-        print(f"Running WAN inference for: {prompt}")
-
-        # Fake output frames for structure (replace)
-        frames = [(255 * torch.rand(256, 256, 3)).byte().cpu().numpy()
-                  for _ in range(num_frames)]
-        return frames
+print("✅ WAN 2.2 Loaded!")
 
 
-# ---------------------------------------------------------
-# Load model once per container
-# ---------------------------------------------------------
-
-def load_model():
-    global WAN_MODEL
-
-    if WAN_MODEL is not None:
-        return WAN_MODEL
-
-    if not Path(MODEL_PATH).exists():
-        raise FileNotFoundError(f"Model file missing: {MODEL_PATH}")
-
-    WAN_MODEL = WAN22_I2V(MODEL_PATH)
-    return WAN_MODEL
+def decode_base64_image(b64_string):
+    img_bytes = base64.b64decode(b64_string)
+    numpy_arr = np.frombuffer(img_bytes, np.uint8)
+    return cv2.imdecode(numpy_arr, cv2.IMREAD_COLOR)
 
 
-# ---------------------------------------------------------
-# Inference
-# ---------------------------------------------------------
-
-def generate_video(prompt, num_frames):
-    model = load_model()
-
-    frames = model.infer(prompt, num_frames)
-
-    output_path = "/tmp/output.mp4"
-    imageio.mimsave(output_path, frames, fps=24)
-
-    return output_path
+def encode_video_to_b64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
 
-# ---------------------------------------------------------
-# RunPod handler
-# ---------------------------------------------------------
+def generate_video(input_image_b64, prompt):
+    img = decode_base64_image(input_image_b64)
+
+    output_path = "/tmp/out.mp4"
+
+    video = pipe.i2v(img, prompt=prompt)
+    video.save(output_path)
+
+    return encode_video_to_b64(output_path)
+
 
 def handler(job):
-    inp = job.get("input", {})
 
-    prompt = inp.get("prompt", "A cinematic neon waterfall")
-    num_frames = int(inp.get("num_frames", 48))
+    try:
+        input_image = job["input"]["image"]
+        prompt = job["input"].get("prompt", "high quality cinematic video")
 
-    print(f"Generating video: {prompt} ({num_frames} frames)")
+        video_b64 = generate_video(input_image, prompt)
 
-    video_path = generate_video(prompt, num_frames)
+        return {
+            "status": "success",
+            "video_base64": video_b64
+        }
 
-    url = runpod.serverless.upload_file(video_path)
-
-    return {
-        "status": "success",
-        "video_url": url
-    }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 runpod.serverless.start({"handler": handler})
