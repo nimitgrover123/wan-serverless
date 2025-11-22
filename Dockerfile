@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install HuggingFace Hub for runtime download
-RUN pip install --no-cache-dir huggingface_hub
+COPY models/ /workspace/models/
 
 COPY handler.py .
 
