@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y git wget unzip ffmpeg && rm -rf /var/li
 WORKDIR /workspace
 
 COPY requirements.txt .
-RUN pip install ---no-build-isolation -no-cache-dir -r requirements.txt
+RUN pip install --no-build-isolation --no-cache-dir -r requirements.txt
 
 COPY . .
 
