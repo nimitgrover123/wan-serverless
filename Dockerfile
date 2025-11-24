@@ -1,5 +1,7 @@
 FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime
 
+ENV FLASH_ATTENTION_SKIP_CUDA_BUILD=1
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
