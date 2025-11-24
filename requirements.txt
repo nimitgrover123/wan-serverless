@@ -13,4 +13,3 @@ imageio[ffmpeg]
 opencv-python
 einops
 safetensors
-git+https://github.com/Wan-Video/Wan2.2.git
