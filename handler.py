@@ -24,7 +24,7 @@ import runpod
 # Config (override via environment variables in RunPod UI if needed)
 WAN_REPO_DIR = os.environ.get("WAN_REPO_DIR", "/workspace/Wan2.2-I2V-A14B")
 RUNPOD_VOLUME_MOUNT = os.environ.get("RUNPOD_VOLUME_MOUNT", "/workspace")
-CKPT_SUBDIR = os.environ.get("CKPT_SUBDIR", "/Wan2.2-I2V-A14B")
+CKPT_SUBDIR = os.environ.get("CKPT_SUBDIR", "Wan2.2-I2V-A14B")
 CKPT_DIR = os.environ.get("CKPT_DIR", f"{RUNPOD_VOLUME_MOUNT}/{CKPT_SUBDIR}")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/tmp/wan_out")
 GENERATE_PY = os.path.join(WAN_REPO_DIR, "generate.py")
