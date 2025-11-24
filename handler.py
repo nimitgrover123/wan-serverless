@@ -22,7 +22,7 @@ from pathlib import Path
 import runpod
 
 # Config (override via environment variables in RunPod UI if needed)
-WAN_REPO_DIR = os.environ.get("WAN_REPO_DIR", "/workspace/Wan2.2-I2V-A14B")
+WAN_REPO_DIR = os.environ.get("WAN_REPO_DIR", "/workspace/wan22_repo")
 RUNPOD_VOLUME_MOUNT = os.environ.get("RUNPOD_VOLUME_MOUNT", "/workspace")
 CKPT_SUBDIR = os.environ.get("CKPT_SUBDIR", "Wan2.2-I2V-A14B")
 CKPT_DIR = os.environ.get("CKPT_DIR", f"{RUNPOD_VOLUME_MOUNT}/{CKPT_SUBDIR}")
