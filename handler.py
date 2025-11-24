@@ -80,8 +80,7 @@ def run_generate(image_path, prompt, size="832*480", frame_num=48, sample_steps=
         cmd += extra_flags
 
     cmd_str = " ".join(shlex.quote(x) for x in cmd)
-    print("Running WAN generate command:
-", cmd_str)
+    print("Running WAN generate command:", cmd_str)
 
     proc = subprocess.run(cmd, cwd=WAN_REPO_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     print(proc.stdout)
