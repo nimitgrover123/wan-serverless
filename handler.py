@@ -17,7 +17,7 @@ import runpod
 
 # Config
 WAN_REPO_DIR = os.environ.get("WAN_REPO_DIR", "/workspace/wan22_repo")
-CKPT_DIR = os.environ.get("CKPT_DIR", "/Wan2.2-I2V-A14B")
+CKPT_DIR = os.environ.get("CKPT_DIR", "Wan2.2-I2V-A14B")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/tmp/wan_out")
 GENERATE_PY = os.path.join(WAN_REPO_DIR, "generate.py")
 
